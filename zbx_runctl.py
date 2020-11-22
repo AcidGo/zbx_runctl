@@ -3,38 +3,37 @@
 
 # Author: AcidGo
 # Usage:
-#   mode: Ö´ĞĞÄ£Ê½£¬¿ÉÑ¡ÈçÏÂ£º
-#       - edit: ĞŞ¸ÄÅäÖÃÄ£Ê½£¬¿ÉÒÔ¶ÔÖ¸¶¨ÅäÖÃ½øĞĞĞŞ¸Ä¡£
-#       - start: Æô¶¯ agent¡£
-#       - restart: ÖØÆô agent¡£
-#       - stop: Í£Ö¹ agent¡£
-#       - status: ²é¿´ agent ×´Ì¬¡£
-#       - check: ¼ì²é agent ÅäÖÃ¡£
-#   zbx_cnf_server: ĞŞ¸Ä zabbix-agent ¹ØÓÚ Server µÄÅäÖÃ¡£
-#   zbx_cnf_activeserver: ĞŞ¸Ä zabbix-agent ¹ØÓÚ ServerActive µÄÅäÖÃ¡£
-#   zbx_cnf_hostname: ĞŞ¸Ä zabbix-agent ¹ØÓÚ Hostname µÄÅäÖÃ¡£
-#   zbx_cnf_listenport: ĞŞ¸Ä zabbix-agent ¹ØÓÚ ListenPort µÄÅäÖÃ¡£
-#   zbx_cnf_logpath: ĞŞ¸Ä zabbix-agent ¹ØÓÚ LogFile µÄÅäÖÃ¡£
-#   zbx_cnf_userparameter: ĞŞ¸Ä zabbix-agent ¹ØÓÚ UserParameter µÄÅäÖÃ¡£
+#   mode: æ‰§è¡Œæ¨¡å¼ï¼Œå¯é€‰å¦‚ä¸‹ï¼š
+#       - edit: ä¿®æ”¹é…ç½®æ¨¡å¼ï¼Œå¯ä»¥å¯¹æŒ‡å®šé…ç½®è¿›è¡Œä¿®æ”¹ã€‚
+#       - start: å¯åŠ¨ agentã€‚
+#       - restart: é‡å¯ agentã€‚
+#       - stop: åœæ­¢ agentã€‚
+#       - status: æŸ¥çœ‹ agent çŠ¶æ€ã€‚
+#       - check: æ£€æŸ¥ agent é…ç½®ã€‚
+#   zbx_cnf_server: ä¿®æ”¹ zabbix-agent å…³äº Server çš„é…ç½®ã€‚
+#   zbx_cnf_activeserver: ä¿®æ”¹ zabbix-agent å…³äº ServerActive çš„é…ç½®ã€‚
+#   zbx_cnf_hostname: ä¿®æ”¹ zabbix-agent å…³äº Hostname çš„é…ç½®ã€‚
+#   zbx_cnf_listenport: ä¿®æ”¹ zabbix-agent å…³äº ListenPort çš„é…ç½®ã€‚
+#   zbx_cnf_logpath: ä¿®æ”¹ zabbix-agent å…³äº LogFile çš„é…ç½®ã€‚
 
 
 import platform, sys, os, time
-import subprocess
 import re
+import subprocess
 
-if platform.system().lower() == "windows":
+
+if platform.system().lower == "windows";
     import win32serviceutil
     import shutil
 
 
-# ########## CONFIG
+# CONFIG
 LOGGING_LEVEL = "DEBUG"
-USE_ACCODE = False
-WIN_ZBX_AGENT_DES = "C:\\zabbix_agent"
-WIN_ZBX_CONF_PATH = "C:\\zabbix_agent\\zabbix_agentd.win.conf"
-WIN_ZBX_SERVICE_NAME = "Zabbix Agent"
-LNX_ZBX_CONF_PATH = "/etc/zabbix/zabbix_agentd.conf"
-LNX_ZBX_SERVICE_NAME = "zabbix-agent"
+
+ZBX_WIN_AGENTD_SERVICE_NAME = "Zabbix Agent"
+ZBX_WIN_AGENT2_SERVICE_NAME = "Zabbix Agent2"
+ZBX_LNX_AGENTD_SERVICE_NAME = "zabbix-agent"
+ZBX_LNX_AGENT2_SERVICE_NAME = "zabbix-agent2"
 
 WIN_SERVICE_STATUS_MAPPING = {
     -1: "NO_INSTALL",
@@ -44,7 +43,6 @@ WIN_SERVICE_STATUS_MAPPING = {
     3: "STOP_PENDING",
     4: "RUNNING"
 }
-
 LNX_SERVICE_STATUS_MAPPING = {
     -1: "NO_INSTALL",
     0: "UNKNOWN",
@@ -54,468 +52,196 @@ LNX_SERVICE_STATUS_MAPPING = {
     600: "Running",
     99: "EL6"
 }
-# ########## EOF CONFIG
+# EOF CONFIG
 
 
-class ACLogger(object):
-    """×Ô¶¨ÒåµÄÀàËÆ logging ¹¦ÄÜµÄĞÅÏ¢»ØÏÔÀà¡£
-    ÓÉÓÚ Easyops ÖĞµÄ»ØÏÔÊÇ¿¼ÂÇÔÚÍøÒ³ÖĞÏÔÊ¾£¬Òò´Ë¿ÉÒÔ²»Ê¹ÓÃ logging Ä£¿é£¬±ÜÃâ°üÒıÈë¡¢logging ÄÚÏß³Ì¸ÉÈÅ¡¢Logger ¸ÉÈÅµÈ¡£
+
+def init_logger(level, logfile=None):
+    """æ—¥å¿—åŠŸèƒ½åˆå§‹åŒ–ã€‚
+    å¦‚æœä½¿ç”¨æ—¥å¿—æ–‡ä»¶è®°å½•ï¼Œé‚£ä¹ˆåˆ™é»˜è®¤ä½¿ç”¨ RotatinFileHandler çš„å¤§å°è½®è¯¢æ–¹å¼ï¼Œ
+    é»˜è®¤æ¯ä¸ªæœ€å¤§ 10 MBï¼Œæœ€å¤šä¿ç•™ 5 ä¸ªã€‚
+    Args:
+        level: è®¾å®šçš„æœ€ä½æ—¥å¿—çº§åˆ«ã€‚
+        logfile: è®¾ç½®æ—¥å¿—æ–‡ä»¶è·¯å¾„ï¼Œå¦‚æœä¸è®¾ç½®åˆ™è¡¨ç¤ºå°†æ—¥å¿—è¾“å‡ºäºæ ‡å‡†è¾“å‡ºã€‚
     """
-    NOTSET = 0
-    DEBUG = 10
-    INFO = 20
-    WARNING = 30
-    ERROR = 40
-    CRITICAL = 50
-    def __init__(self, level):
-        self.setlevel(level)
-        self.addtime = False
-    def setlevel(self, level):
-        if isinstance(level, str):
-            level = {"NOTSET": self.NOTSET,
-                "DEBUG": self.DEBUG,
-                "INFO": self.INFO,
-                "WARNING": self.WARNING,
-                "ERROR": self.ERROR,
-                "CRITICAL": self.CRITICAL
-            }[level]
-        self.level = level
-    def enabletime(self, isenable):
-        if isenable is True:
-            self.addtime = True
-            from datetime import datetime
-            self.datetime = datetime
-        else:
-            self.addtime = False
-    def _print(self, prefix, msg):
-        if not prefix:
-            return 
-        if not isinstance(msg, (str,)):
-            try:
-                resstr = str(msg)
-            except Exception as e:
-                return 
-        if self.addtime:
-            prefix = self.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]") + "-" + prefix
-        print(prefix + " " + msg)
-    def debug(self, msg):
-        if self.level > self.DEBUG:
-            return 
-        prefix = "[DEBUG]"
-        self._print(prefix, msg)
-    def info(self, msg):
-        if self.level > self.INFO:
-            return 
-        prefix = "[INFO]"
-        self._print(prefix, msg)
-    def warning(self, msg):
-        if self.level > self.WARNING:
-            return 
-        prefix = "[WARN]"
-        self._print(prefix, msg)
-    def error(self, msg):
-        if self.level > self.ERROR:
-            return 
-        prefix = "[ERROR]"
-        self._print(prefix, msg)
-    def critial(self, msg):
-        if self.level > self.CRITICAL:
-            return 
-        prefix = "[CRITICAL]"
-        self._print(prefix, msg)
-
-
-def zbx_runctl(mode, zbx_cnf_server, zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cnf_listenport, zbx_cnf_logpath, zbx_cnf_userparameter):
-    """¶Ô zabbix-agent ½øĞĞÔËĞĞ¿ØÖÆÓëÅäÖÃĞŞ¸Ä¡£
-    """
-    in_args = set([i for i in locals()])
-    args_info = "Input args: " + ", ".join(["{!s}:[{!s}]".format(i, j) for i, j in locals().items() if i in in_args])
-    logging.info(args_info + ".")
-    logging.info("Start check.")
-    # Ô¤¼ì²é
-    tmp_res = precheck_zbx_runctl(mode, zbx_cnf_server, zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cnf_listenport, zbx_cnf_logpath, zbx_cnf_userparameter)
-    if not tmp_res:
-        logging.error("The check is not pass.EXIT.")
-        raise Exception("Check Error.")
+    import os
+    import sys
+    if not logfile:
+        logging.basicConfig(
+            level = getattr(logging, level.upper()),
+            format = "%(asctime)s [%(levelname)s] %(message)s",
+            datefmt = "%Y-%m-%d %H:%M:%S"
+        )
     else:
-        mode =tmp_res[0]
-        zbx_cnf_server = tmp_res[1]
-        zbx_cnf_activeserver = tmp_res[2]
-        zbx_cnf_hostname = tmp_res[3]
-        zbx_cnf_listenport = tmp_res[4]
-        zbx_cnf_logpath = tmp_res[5]
-        zbx_cnf_userparameter = tmp_res[6]
-    tmp_out = {}
-    for j in [i for i in locals() if i in in_args]:
-        tmp_out[j] = locals().get(j)
-    logging.info("After check, the args change to: " + ", ".join(["{!s}:[{!s}]".format(i, j) for i, j in tmp_out.items()]) + ".")
+        logger = logging.getLogger()
+        logger.setLevel(getattr(logging, level.upper()))
+        if logfile.lower() == "local":
+            logfile = os.path.join(sys.path[0], os.path.basename(os.path.splitext(__file__)[0]) + ".log")
+        handler = RotatingFileHandler(logfile, maxBytes=10*1024*1024, backupCount=5)
+        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    logging.info("Logger init finished.")
 
-    # ±à¼­ÅäÖÃµÄÅäÖÃÓ³Éä±í
-    edit_dict = {
-        "Server": zbx_cnf_server,
-        "ServerActive": zbx_cnf_activeserver,
-        "Hostname": zbx_cnf_hostname,
-        "ListenPort": zbx_cnf_listenport,
-        "LogFile": zbx_cnf_logpath,
-        "UserParameter": zbx_cnf_userparameter
-    }
+def collect_zabbix_agent():
+    """å¯¹å½“å‰æ“ä½œç³»ç»Ÿæ£€æŸ¥æ˜¯å¦å­˜åœ¨ Zabbix-Agentï¼Œå¹¶ä¸”åˆ¤æ–­å¯ç”¨çš„æ˜¯ Agentd è¿˜æ˜¯ Agent2ã€‚
 
-    iserror = False
-    try:
-        if mode == "start":
-            if platform.system().lower() == "windows":
-                zbx_start_win()
-            if platform.system().lower() == "linux":
-                zbx_start_lnx()
-        elif mode == "restart":
-            if platform.system().lower() == "windows":
-                zbx_restart_win()
-            if platform.system().lower() == "linux":
-                zbx_restart_lnx()
-        elif mode == "stop":
-            if platform.system().lower() == "windows":
-                zbx_stop_win()
-            if platform.system().lower() == "linux":
-                zbx_stop_lnx()
-
-    except Exception as e:
-        iserror = True
-        logging.error("It has erro, when exec command, it is: \n{0!s}".format(e))
-
-    if mode in ("start", "restart", "stop", "status"):
-        if mode != "status":
-            time.sleep(4)
-        if platform.system().lower() == "windows":
-            logging.info("The status is : \n{0!s}".format(WIN_SERVICE_STATUS_MAPPING[win_status_service(WIN_ZBX_SERVICE_NAME)]))
-        if platform.system().lower() == "linux":
-            logging.info("The status is : \n{0!s}".format(LNX_SERVICE_STATUS_MAPPING[lnx_status_servcie(LNX_ZBX_SERVICE_NAME)]))
-        if iserror is True:
-            exit(1)
-    if mode == "check":
-        if platform.system().lower() == "windows":
-            config_path = WIN_ZBX_CONF_PATH
-        if platform.system().lower() == "linux":
-            config_path = LNX_ZBX_CONF_PATH
-        zbx_config_check(config_path)
-    elif mode == "edit":
-        if platform.system().lower() == "windows":
-            config_path = WIN_ZBX_CONF_PATH
-            zbx_config_edit(config_path, edit_dict)
-            logging.info("Begin restart zabbix-agent.")
-            zbx_restart_win()
-        if platform.system().lower() == "linux":
-            config_path = LNX_ZBX_CONF_PATH
-            zbx_config_edit(config_path, edit_dict)
-            logging.info("Begin restart zabbix-agent.")
-            zbx_restart_lnx()
-
-
-def precheck_zbx_runctl(mode, zbx_cnf_server, zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cnf_listenport, zbx_cnf_logpath, zbx_cnf_userparameter):
-    """Ô¤¼ì²é zbx_runctl Ö´ĞĞ²Ù×÷¡£
+    Returns:
+        res <int>:
+            0: ä¸å­˜åœ¨ Zabbix-Agentã€‚
+            1: å­˜åœ¨ agentdã€‚
+            2: å­˜åœ¨ agent2ã€‚
     """
-    # ¿ÉĞĞĞÔ·ÖÎö: ¶ÔÄ¿Ç°²»Ö§³ÖµÄ²Ù×÷ÏµÍ³£¬¾Ü¾øÖ´ĞĞ
-    if platform.system().lower() not in ("linux", "windows"):
-        logging.error("Current OS is [{!s}].".format(platform.system().lower()))
-        return False
-    # ¿ÉĞĞĞÔ·ÖĞÍ: ¼ì²éÊÇ·ñ°²×° agent
-    if platform.system().lower() == "windows":
-        if win_status_service(WIN_ZBX_SERVICE_NAME) == -1:
-            if mode == "status":
-                logging.info("The status is : \nNoinstall")
-                exit(0)
-            logging.error("On windows, the agent is not installed.")
-            return False
-    elif platform.system().lower() == "linux":
-        if lnx_status_servcie(LNX_ZBX_SERVICE_NAME) == -1:
-            if mode == "status":
-                logging.info("The status is : \nNoinstall")
-                exit(0)
-            logging.error("On linux, the agent is not installed.")
-            return False
-    # ²ÎÊıÓÅ»¯: Èç¹û mode Îª·Ç±à¼­£¬Ôò½«ÅäÖÃÏà¹ØµÄ±äÁ¿ÖÃÎª None
-    if mode.lower() != "edit":
-        zbx_cnf_server = None
-        zbx_cnf_activeserver = None
-        zbx_cnf_hostname = None
-        zbx_cnf_listenport = None
-        zbx_cnf_logpath = None
-    # ²ÎÊı¼ì²é: Èç¹û mode Îª±à¼­£¬±à¼­²ÎÊı²»ÄÜÎª¿Õ
-    else:
-        if not any([zbx_cnf_server, zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cnf_listenport, zbx_cnf_logpath, zbx_cnf_userparameter]):
-            logging.error("On mode:[{!s}], your zbx_cnf_* is emtpy all.".format(mode))
-            return False
-    # ²ÎÊı¼ì²é: Èç¹û´æÔÚ zbx_cnf_listenport£¬Ôò±ØĞëÎª 1024 - 32767 Ö®¼ä
-    if zbx_cnf_listenport:
-        try:
-            if '.' in str(zbx_cnf_listenport):
-                logging.error("Your zbx_cnf_listenport:[{!s}] has '.'.".format(zbx_cnf_listenport))
-                return False
-            tmp = int(zbx_cnf_listenport)
-            if not 1024 < tmp < 32767:
-                logging.error("Your zbx_cnf_listenport:[{!s}] must be between 1024 and 32767.".format(zbx_cnf_listenport))
-                return False
-        except Exception as e:
-            logging.error("Check zbx_cnf_listenport:[{!s}] is failed.".format(zbx_cnf_listenport))
-            return False
-    # ²ÎÊıÓÅ»¯: ¶ÔÓÚ zbx_cnf_hostname Èç¹ûÊäÈë @@ ·ûºÅÔò±íÊ¾Ê¹ÓÃ×Ô¶¯¼ìË÷¹¦ÄÜ
-    if zbx_cnf_hostname == "@@":
-        logging.info("Your zbx_cnf_hostname choice @@, to be auto.")
-        zbx_cnf_hostname = get_preferred_ipaddres()
-        logging.info("The zbx_cnf_hostname change to [{!s}].".format(zbx_cnf_hostname))
-    # ²ÎÊıÓÅ»¯: zbx_cnf_userparameter ½øĞĞÇĞ¸î
-    res_zbx_cnf_userparameter = [i.strip() for i in zbx_cnf_userparameter.split('\n')]
-    # ²ÎÊıÓÅ»¯: zbx_cnf_userparameter ÊäÈëÖĞµÄ key ²»ÄÜÓĞÖØ¸´
-    tmp_set = set()
-    for i in res_zbx_cnf_userparameter:
-        key_ = i.split(',')[0].strip()
-        if key_ in tmp_set:
-            logging.error("In UserParameter, it has same key:[{!s}].".format(key_))
-            return False
+    os_system = platform.system().lower()
+    if os_system == "windows":
+        if win_service_status(ZBX_WIN_AGENT2_SERVICE_NAME) != -1:
+            return 2
+        elif win_service_status(ZBX_WIN_AGENTD_SERVICE_NAME) != -1:
+            return 1
         else:
-            tmp_set.add(key_)
-    return mode, zbx_cnf_server, zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cnf_listenport, zbx_cnf_logpath, res_zbx_cnf_userparameter
+            return 0
+    elif os_system == "linux":
+        if lnx_service_action("is-enabled", ZBX_LNX_AGENT2_SERVICE_NAME):
+            return 2
+        elif lnx_service_action("is-enabled", ZBX_LNX_AGENTD_SERVICE_NAME):
+            return 1
+        else:
+            return 0
+
+def lnx_service_action(action, service_name):
+    """
+    """
+    if action not in ("start", "stop", "restart", "status", "enable", "disable", "is-enabled"):
+        raise Exception("not support the service action: {!s}".format(action))
+    rc = -999
+    if get_sysversion() in ("el5", "el6"):
+        if action in ("start", "stop", "restart", "status"):
+            command_lst = ["service", service_name, action]
+            rc = lnx_command_execute(command_lst)
+        elif action in ("enable",):
+            command_lst = ["chkconfig", service_name, "on"]
+            rc = lnx_command_execute(command_lst)
+        elif action in ("disable",):
+            command_lst = ["chkconfig", service_name, "off"]
+            rc = lnx_command_execute(command_lst)
+        elif action in ("is-enabled",):
+            command_lst = ["chkconfig", service_name]
+            rc = lnx_command_execute(command_lst)
+        else:
+            rc = -999
+    elif get_sysversion() in ("el7"):
+        command_lst = ["systemctl", action, service_name]
+        rc = lnx_command_execute(command_lst)
+    else:
+        raise Exception("not support the OS now")
+    return rc
 
 
-def win_status_service(service_name):
-    """²é¿´ Windows ×¢²á·şÎñµÄ×´Ì¬ĞÅÏ¢¡£
+def win_service_status(service_name):
+    """æŸ¥çœ‹ Windows æ³¨å†ŒæœåŠ¡çš„çŠ¶æ€ä¿¡æ¯ã€‚
 
     Args:
-        service_name: ²é¿´µÄ·şÎñÃû¡£
+        service_name: å¾…æŸ¥çœ‹çš„æœåŠ¡åç§°ã€‚
     Returns:
-        <int>: ·şÎñÂë£¬-1 ÎªÎ´×¢²á£¬ÆäËû¿É¼û WIN_SERVICE_STATUS_MAPPING¡£
+        <int>: è¿”å›çŠ¶æ€ç ï¼Œ-1 ä¸ºæœªæ³¨å†Œï¼Œå…¶ä»–å¯è§ WIN_SERVICE_STATUS_MAPPINGã€‚
     """
     try:
         status_code = win32serviceutil.QueryServiceStatus(service_name)[1]
     except Exception as e:
-        # ·şÎñÎ´×¢²á
         if hasattr(e, "winerror") and e.winerror == 1060:
             return -1
         else:
             raise e
     return status_code
 
+def win_service_restart(service_name):
+    """
+    """
+    win32serviceutil.RestartService(service_name)
+    time.sleep(3)
+    return win_service_status(service_name) in (4,)
 
-def lnx_status_servcie(service_name):
-    """²é¿´ Linux ÖĞ·şÎñµÄ°²×°Çé¿ö¡£
+def win_service_start(service_name):
+    """
+    """
+    win32serviceutil.StartService(service_name)
+    time.sleep(3)
+    return win_service_status(service_name) in (4,)
 
-    Args:
-        service_name: ²é¿´µÄ·şÎñÃû¡£
+def win_service_stop(service_name):
+    """
+    """
+    win32serviceutil.StopService(service_name)
+    time.sleep(3)
+    return win_service_status(service_name) in (1,2,3)
+
+def get_sysversion():
+    """è·å–å½“å‰æ“ä½œç³»ç»Ÿçš„ç‰ˆæœ¬ä¿¡æ¯ã€‚
+
     Returns:
-        <int> -1: Î´°²×°¡£
-        <int> != -1: ÆäËûÇé¿ö¡£
+        <str> "win": æ‰€æœ‰ windows å¹³å°ã€‚
+        <str> "el5": CentOS/RedHat 5ã€‚
+        <str> "el6": CentOS/RedHat 6ã€‚
+        <str> "el7": CentOS/RedHat 7ã€‚
     """
-    if get_sysversion() == "el7":
-        command_lst = ["systemctl", "status", service_name]
-        try:
-            subprocess.check_output(command_lst)
-        except subprocess.CalledProcessError as e:
-            if e.returncode == 4:
-                return -1
-            elif e.returncode == 3:
-                return 1
-            else:
-                return 0
+    if platform.system().lower() == "windows":
+        return "win"
+    elif platform.system().lower() == "linux":
+        res_tmp = subprocess.check_output(["uname", "-r"]).strip()
+        res = re.search('el[0-9]', res_tmp).group()
+        if res:
+            return res
         else:
-            return 2
-    else:
-        try:
-            command_lst = ["service", service_name, "status"]
-            subprocess.check_output(command_lst)
-        except subprocess.CalledProcessError as e:
-            if e.returncode == 1:
-                return -1
-            elif e.returncode == 3:
-                return 603
-            else:
-                return 99
-        else:
-            return 600
+            logging.error("Cannot get sysversion from [{!s}].".format(res_tmp))
+            raise Exception()
 
-
-def zbx_restart_win():
-    """ÔÚ Windows ÉÏÖØÆô zabbix-agent ·şÎñ¡£
-    """
-    win32serviceutil.RestartService(WIN_ZBX_SERVICE_NAME)
-    time.sleep(3)
-    return win_status_service(WIN_ZBX_SERVICE_NAME)
-
-
-def zbx_start_win():
-    """ÔÚ Windows ÉÏÖØÆô zabbix-agent ·şÎñ¡£
-    """
-    win32serviceutil.StartService(WIN_ZBX_SERVICE_NAME)
-    time.sleep(3)
-    return win_status_service(WIN_ZBX_SERVICE_NAME)
-
-
-def zbx_stop_win():
-    """ÔÚ Windows ÉÏÖØÆô zabbix-agent ·şÎñ¡£
-    """
-    win32serviceutil.StopService(WIN_ZBX_SERVICE_NAME)
-    time.sleep(3)
-    return win_status_service(WIN_ZBX_SERVICE_NAME)
-
-
-def zbx_restart_lnx():
-    """ÔÚ Linux(CentOS/RedHat) ÉÏÖØÆô zabbix-agent ·şÎñ¡£
-    """
-    if get_sysversion() == "el7":
-        command_lst = ["systemctl", "restart", LNX_ZBX_SERVICE_NAME]
-    else:
-        command_lst = ["service", LNX_ZBX_SERVICE_NAME, "restart"]
-    lnx_command_execute(command_lst)
-
-
-def zbx_start_lnx():
-    """ÔÚ Linux(CentOS/RedHat) ÉÏÖØÆô zabbix-agent ·şÎñ¡£
-    """
-    if get_sysversion() == "el7":
-        command_lst = ["systemctl", "start", LNX_ZBX_SERVICE_NAME]
-    else:
-        command_lst = ["service", LNX_ZBX_SERVICE_NAME, "start"]
-    lnx_command_execute(command_lst)
-
-
-def zbx_stop_lnx():
-    """ÔÚ Linux(CentOS/RedHat) ÉÏÖØÆô zabbix-agent ·şÎñ¡£
-    """
-    if get_sysversion() == "el7":
-        command_lst = ["systemctl", "stop", LNX_ZBX_SERVICE_NAME]
-    else:
-        command_lst = ["service", LNX_ZBX_SERVICE_NAME, "stop"]
-    lnx_command_execute(command_lst)
-
-
-def zbx_config_check(config_path):
-    """¼ì²é zabbix-agent ÅäÖÃĞÅÏ¢¡£
-
+def lnx_command_execute(command_lst):
+    """åœ¨ Linux å¹³å°æ‰§è¡Œå‘½ä»¤ã€‚
     Args:
-        config_path: ÅäÖÃÎÄ¼şÂ·¾¶¡£
+        command_lst: å‘½ä»¤åˆ—è¡¨ï¼Œshell ä¸‹å‘½ä»¤çš„ç©ºæ ¼åˆ†æ®µå½¢å¼ã€‚
+    Returns:
+        <bool> False: æ‰§è¡Œè¿”å›éé¢„æœŸ exitcodeã€‚
+        <bool> True: æ‰§è¡Œè¿”å›é¢„æœŸ exitcodeã€‚
     """
-    import re
-    if not os.path.isfile(config_path):
-        logging.error("The config:[{!s}] is not a file not not exists.".format(config_path))
-        raise Exception()
-    if not os.access(config_path, os.W_OK):
-        logging.error("The config:[{!s}] is not allow to write.".format(config_path))
-        raise Exception()
-    conf_lst = []
-    with open(config_path, "r") as f:
-        for line in f:
-            if re.search(r"^ *#", line) or re.search(r"^ *$", line):
-                continue
-            conf_lst.append(line.strip())
-    out_str = "Check the conf:[{!s}] is:\n".format(config_path)
-    out_str += "\n".join(conf_lst)
-    logging.info(out_str)
+    logging.info("---------- {!s} ----------".format(command_lst))
+    try:
+        res = subprocess.check_output(command_lst, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        for i in e.output.split('\n'):
+            logging.error(i)
+        logging.info("-"*30)
+        return False
+    for i in [i for i in res.split('\n') if not i.strip()]:
+        logging.info(i)
+    logging.info("-"*30)
+    return True
 
-
-def zbx_config_edit(config_path, config_dict):
-    """ĞŞ¸Ä zabbix-agent ÅäÖÃÎÄ¼şµÄ²ÎÊı¡£
-
-    Args:
-        config_path: ĞèÒªĞŞ¸ÄµÄ zabbix-agent µÄÅäÖÃÎÄ¼şÂ·¾¶¡£
-        config_dict: ĞèÒªĞŞ¸ÄµÄ²ÎÊıÄÚÈİ¡£
+def multi_service_action(action, service_name):
     """
-    import re
-    if len(filter(lambda x: config_dict.get(x, '') in ('', []), config_dict)) == len(config_dict):
-        logging.info("No config to edit.")
-        with open(config_path, "r") as f:
-            for line in f:
-                for i in config_dict:
-                    tmp = re.search(r"^{!s} *= *(.*?)$".format(i), line)
-                    if not tmp:
-                        continue
-                    else:
-                        logging.info("Now config: {!s}.".format(line.strip()))
-                        break
-        return 
-    if not os.path.isfile(config_path):
-        logging.error("The config:[{!s}] is not a file not not exists.".format(config_path))
-        raise Exception()
-    if not os.access(config_path, os.W_OK):
-        logging.error("The config:[{!s}] is not allow to write.".format(config_path))
-        raise Exception()
-    logging.info("Begin to chagne config.")
-    conf_lst = []
-    old_config_dict = {}
-    if config_dict.get("UserParameter", None):
-        userparameter_append = [i for i in config_dict["UserParameter"]]
-        userparameter_change = []
-        old_config_dict["UserParameter"] = []
-    with open(config_path, "r") as f:
-        for line in f:
-            for i in config_dict:
-                if not config_dict[i]:
-                    continue
-                tmp = re.search(r"^{!s} *= *(.*?)$".format(i), line)
-                if not tmp:
-                    continue
-                else:
-                    if i == "UserParameter":
-                        # Èç¹û config_dict["UserParameter"] ÖĞµÄËùÓĞÔªËØÎª¿Õ£¬ÔòÌø¹ıÉÏ²ã for
-                        for ii_1 in config_dict[i]:
-                            if ii_1.strip() != "":
-                                break
-                        else:
-                            continue
-                        cnf_userparameter_key = "".join(line.strip().split('=')[1:]).split(',')[0].strip()
-                        for j_value in config_dict[i]:
-                            if cnf_userparameter_key == j_value.strip().split(',')[0].strip():
-                                logging.debug("Catch userparameter_key:[{!s}].".format(cnf_userparameter_key))
-                                logging.debug("It is [{!s}].".format(line.strip()))
-                                # Èç¹û UserParameter ÊÇ´øÓĞ DEL ·ûºÅµÄ£¬ÔòĞèÒªÉ¾³ı
-                                if j_value.strip().split(',')[-1].strip() == "DEL":
-                                    logging.debug("For the userparameter_key:[{!s}], DEL it.".format(cnf_userparameter_key))
-                                    userparameter_append.remove(j_value)
-                                    line = "@@"
-                                    break
-                                else:
-                                    old_line = line
-                                    line = re.sub(r"^{!s} *= *(.*?)$".format(i), "{!s}={!s}".format(i, j_value), line)
-                                    old_config_dict[i].append(tmp.group(1))
-                                    userparameter_change.append((old_line.strip(), j_value.strip()))
-                                    userparameter_append.remove(j_value)
-                                    break
-                    else:
-                        old_config_dict[i] = tmp.group(1)
-                        line = re.sub(r"^{!s} *= *(.*?)$".format(i), "{!s}={!s}".format(i, config_dict[i]), line)
-                    break
-            if line != "@@":
-                conf_lst.append(line)
-            else:
-                logging.debug("Get the special symbol:[{!s}].".format(line.strip()))
-    hassplit = 0 if conf_lst[-1].endswith(os.linesep) else 1
-    # Ä³Ğ©¿ÉÄÜ´æÔÚÉÏÒ»²½Î´Æ¥ÅäµÃµ½µÄĞŞ¸ÄÅäÖÃ£¬ÕâÀï½²×·¼ÓÖÁÎ²²¿
-    for i in config_dict:
-        if i == "UserParameter":
-            if len(filter(lambda x: x.strip() != "", userparameter_append)) > 0:
-                for j in userparameter_append:
-                    if j.strip().split(',')[-1].strip() == "DEL":
-                        continue
-                    conf_lst.append("{!s}={!s}".format(os.linesep*hassplit + i, str(j) + os.linesep))
-                    userparameter_change.append(('', "UserParameter={!s}".format(j.strip())))
-        elif i not in old_config_dict and config_dict[i]:
-            conf_lst.append("{!s}={!s}".format(os.linesep*hassplit + i, str(config_dict[i]) + os.linesep))
-            old_config_dict[i] = ""
-    with open(config_path, "w") as f:
-        for line in conf_lst:
-            f.write(line)
-    for i in old_config_dict:
-        if i != "UserParameter":
-            logging.info("Change {!s}={!s} -> {!s}".format(i, old_config_dict[i], config_dict[i]))
+    """
+    os_system = platform.system().lower()
+    if os_system in ("windows",):
+        if action == "status":
+            return win_service_status(service_name)
+        elif action == "restart":
+            return win_service_restart(service_name)
+        elif action == "start":
+            return win_service_start(service_name)
+        elif action == "stop":
+            return win_service_stop(service_name)
         else:
-            for j in userparameter_change:
-                logging.info("Change {!s} -> {!s}".format(j[0], j[1]))
-
+            raise Exception("not supported action {!s} for service {!s} on windows".format(action, service_name))
+    elif os_system in ("el5", "el6", "el7"):
+        return lnx_service_action(action, service_name)
+    else:
+        raise Exception("not suported for the os: {!s}".format(os_system))
 
 def get_preferred_ipaddres():
-    """Ñ¡ÔñºÏÊÊµÄµ±ÆÚÖ÷»úÄÚµÄ IP µØÖ·¡£
-    Èç¹ûÊÇ easyops °æ±¾£¬ÔòÊ×ÏÈÊ¹ÓÃ EASYOPS_LOCAL_IP ±äÁ¿£»
-    Èç¹ûÊÇ·Ç easyops °æ±¾£¬½«Ê¹ÓÃ±¨ÎÄĞ­Òé»ñÈ¡ËùÓĞIP£¬È»ºóÑ¡ÔñÄ¬ÈÏÍø¹ØÍ¬Íø¶ÎµÄIPµØÖ··µ»Ø¡£
-
+    """é€‰æ‹©åˆé€‚çš„å½“æœŸä¸»æœºå†…çš„ IP åœ°å€ã€‚
+    å¦‚æœæ˜¯ easyops ç‰ˆæœ¬ï¼Œåˆ™é¦–å…ˆä½¿ç”¨ EASYOPS_LOCAL_IP å˜é‡ï¼›
+    å¦‚æœæ˜¯é easyops ç‰ˆæœ¬ï¼Œå°†ä½¿ç”¨æŠ¥æ–‡åè®®è·å–æ‰€æœ‰IPï¼Œç„¶åé€‰æ‹©é»˜è®¤ç½‘å…³åŒç½‘æ®µçš„IPåœ°å€è¿”å›ã€‚
     Returns:
-        <str> ip: ºÏÊÊµÄIPµØÖ·£¬¿ÉÄÜ·µ»Ø None¡£
+        <str> ip: åˆé€‚çš„IPåœ°å€ï¼Œå¯èƒ½è¿”å› Noneã€‚
     """
     if "EASYOPS_LOCAL_IP" in globals() and globals().get("EASYOPS_LOCAL_IP") != "":
         return EASYOPS_LOCAL_IP
@@ -557,130 +283,69 @@ def get_preferred_ipaddres():
             break
     return res
 
-
-def list_all_netcards():
-    """»ñÈ¡µ±Ç°ÏµÍ³µÄËùÓĞ¿É¼ûÍø¿¨¡£
-
-    Returns:
-        <list> netcards_lst: Íø¿¨¼¯ºÏ¡£
+def execute(mode, zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cnf_listenport, zbx_cnf_logpath):
     """
-    import psutil
-    if hasattr(psutil, "net_if_addrs"):
-        addrs = psutil.net_if_addrs()
-        return addrs.keys()
+    """
+    # Pre Checking
+    os_system = platform.system().lower()
+    # å¯è¡Œæ€§åˆ†æï¼šå¯¹ç›®å‰ä¸æ”¯æŒçš„æ“ä½œç³»ç»Ÿï¼Œæ‹’ç»æ‰§è¡Œ
+    if os_system not in ("linux", "windows"):
+        raise Exception("the OS is [{!s}], not supported now".format(os_system))
+    # å¯è¡Œæ€§åˆ†æï¼šæ£€æŸ¥æ˜¯å¦å®‰è£…äº† agent
+    agent_type = collect_zabbix_agent()
+    if agent_type <= 0:
+        if mode == "status":
+            logging.info("the status is: Noinstall")
+            exit(0)
+        raise Exception("the agent is not installed")
+    # å‚æ•°ä¼˜åŒ–ï¼šå¦‚æœ mode ä¸ºéç¼–è¾‘ï¼Œåˆ™å°†é…ç½®ç›¸å…³çš„å˜é‡ç½®ä¸º None
+    if mode.lower() != "edit":
+        zbx_cnf_server = None
+        zbx_cnf_activeserver = None
+        zbx_cnf_hostname = None
+        zbx_cnf_listenport = None
+        zbx_cnf_logpath = None
+    # å‚æ•°æ£€æŸ¥ï¼šå¦‚æœ mode ä¸ºç¼–è¾‘ï¼Œç¼–è¾‘å‚æ•°ä¸èƒ½ä¸ºç©º
     else:
-        import socket
-        import fcntl
-        import struct
-        import array
-        max_possible = 128
-        bytes = max_possible * 32
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        names = array.array('B', '\0' * bytes)
-        outbytes = struct.unpack("iL", fcntl.ioctl(
-            s.fileno(),
-            0x8912,
-            struct.pack("iL", bytes, names.buffer_info()[0])
-        ))[0]
-        name_str = names.tostring()
-        lst = []
-        for i in range(0, outbytes, 40):
-            name = name_str[i:i+16].split('\0', 1)[0]
-            lst.append(name)
-        return lst
+        if not any([zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cnf_listenport, zbx_cnf_logpath]):
+            raise Exception("on mode {!s}, your edit params is empty".format(mode))
+    # æ£€æŸ¥å‚æ•°ï¼šå¦‚æœç¼–è¾‘å‚æ•°å­˜åœ¨ zbx_cnf_listenportï¼Œåˆ™å¿…é¡»åœ¨ 1024 - 32767 ä¹‹é—´
+    if zbx_cnf_listenport:
+        if '.' in str(zbx_cnf_listenport):
+            raise Exception("your zbx_cnf_listenport:[{!s}] has '.'".format(zbx_cnf_listenport))
+        tmp = int(zbx_cnf_listenport)
+        if not 1024 < tmp < 32767:
+            raise Exception("your zbx_cnf_listenport:[{!s}] must be between 1024 and 32767".format(zbx_cnf_listenport))
+    # å‚æ•°ä¼˜åŒ–ï¼šå¯¹äº zbx_cnf_hostname å¦‚æœè¾“å…¥ @@ ç¬¦å·åˆ™è¡¨ç¤ºä½¿ç”¨è‡ªåŠ¨æ£€ç´¢åŠŸèƒ½
+    if zbx_cnf_hostname == "@@":
+        logging.info("your zbx_cnf_hostname choice @@, to be auto")
+        zbx_cnf_hostname = get_preferred_ipaddres()
+        logging.info("the zbx_cnf_hostname change to [{!s}]".format(zbx_cnf_hostname))
+    # EOF Pre Checking
 
+    # ç¼–è¾‘é…ç½®çš„é…ç½®æ˜ å°„è¡¨
+    edit_dict = {
+        "Server": zbx_cnf_server,
+        "ServerActive": zbx_cnf_activeserver,
+        "Hostname": zbx_cnf_hostname,
+        "ListenPort": zbx_cnf_listenport,
+        "LogFile": zbx_cnf_logpath,
+    }
 
-def get_default_gateway():
-    """»ñÈ¡µ±Ç°µÄÄ¬ÈÏÍø¹Ø¡£
-    """
-    res = None
-    if platform.system().lower() == "linux":
-        res_tmp = subprocess.check_output(["ip", "-4", "route"]).strip().split(os.linesep)
-        for i in res_tmp:
-            if "default" in i:
-                res = i.split()[2].strip()
-    elif platform.system().lower() == "windows":
-        logging.error("get_default_gateway not in windows.")
-        pass
-    return res
-
-
-def get_sysversion():
-    """»ñÈ¡µ±Ç°²Ù×÷ÏµÍ³µÄ°æ±¾ĞÅÏ¢¡£
-
-    Returns:
-        <str> " ": ËùÓĞ windows Æ½Ì¨¡£
-        <str> "el5": CentOS/RedHat 5¡£
-        <str> "el6": CentOS/RedHat 6¡£
-        <str> "el7": CentOS/RedHat 7¡£
-    """
-    if platform.system().lower() == "windows":
-        return " "
-    elif platform.system().lower() == "linux":
-        res_tmp = subprocess.check_output(["uname", "-r"]).strip()
-        res = re.search('el[0-9]', res_tmp).group()
-        if res:
-            return res
+    try:
+        if os_system == "windows":
+            service_name = ZBX_WIN_AGENT2_SERVICE_NAME if agent_type == 2 else ZBX_WIN_AGENTD_SERVICE_NAME
         else:
-            logging.error("Cannot get sysversion from [{!s}].".format(res_tmp))
-            raise Exception()
-
-
-def lnx_command_execute(command_lst):
-    """ÔÚ Linux Æ½Ì¨Ö´ĞĞÃüÁî¡£
-
-    Args:
-        command_lst: ÃüÁîÁĞ±í£¬shell ÏÂÃüÁîµÄ¿Õ¸ñ·Ö¶ÎĞÎÊ½¡£
-    Returns:
-        <bool> False: Ö´ĞĞ·µ»Ø·ÇÔ¤ÆÚ exitcode¡£
-        <bool> True: Ö´ĞĞ·µ»ØÔ¤ÆÚ exitcode¡£
-    """
-    logging.info("---------- {!s} ----------".format(command_lst))
-    try:
-        res = subprocess.check_output(command_lst, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
-        for i in e.output.split('\n'):
-            logging.error(i)
-        logging.info("-"*30)
-        return False
-    for i in [i for i in res.split('\n') if not i.strip()]:
-        logging.info(i)
-    logging.info("-"*30)
-    return True
-
-
-if __name__ == "__main__":
-    logging = ACLogger(LOGGING_LEVEL)
-    logging.enabletime(True)
-    # ########## Self Test
-    # INPUT_MODE = "edit"
-    # INPUT_ZBX_CNF_SERVER = "10.10.24.30"
-    # INPUT_ZBX_CNF_ACTIVESERVER = ""
-    # INPUT_ZBX_CNF_HOSTNAME = ""
-    # INPUT_ZBX_CNF_LISTENPORT = "" 
-    # INPUT_ZBX_CNF_LOGPATH = ""
-    # zbx_runctl(
-          # mode = INPUT_MODE, 
-          # zbx_cnf_server = INPUT_ZBX_CNF_SERVER, 
-          # zbx_cnf_activeserver = INPUT_ZBX_CNF_ACTIVESERVER, 
-          # zbx_cnf_hostname = INPUT_ZBX_CNF_HOSTNAME, 
-          # zbx_cnf_listenport = INPUT_ZBX_CNF_LISTENPORT, 
-          # zbx_cnf_logpath = INPUT_ZBX_CNF_LOGPATH,
-          # zbx_cnf_userparameter = INPUT_ZBX_CNF_USERPARAMETER
-        # )
-    # ########## EOF Self Test
-
-
-    try:
-        zbx_runctl(
-          mode = INPUT_MODE, 
-          zbx_cnf_server = INPUT_ZBX_CNF_SERVER, 
-          zbx_cnf_activeserver = INPUT_ZBX_CNF_ACTIVESERVER, 
-          zbx_cnf_hostname = INPUT_ZBX_CNF_HOSTNAME, 
-          zbx_cnf_listenport = INPUT_ZBX_CNF_LISTENPORT, 
-          zbx_cnf_logpath = INPUT_ZBX_CNF_LOGPATH,
-          zbx_cnf_userparameter = INPUT_ZBX_CNF_USERPARAMETER
-        )
+            service_name = ZBX_LNX_AGENT2_SERVICE_NAME if agent_type == 2 else ZBX_LNX_AGENTD_SERVICE_NAME
+        
+        if mode == "start":
+            multi_service_action("start", service_name)
+        elif mode == "restart":
+            multi_service_action("restart", service_name)
+        elif mode == "stop":
+            multi_service_action("stop", service_name)
     except Exception as e:
-        logging.error("Runtime has error: {!s}.Please check.".format(e))
-        exit(1)
+        logging.error("it has error, when exec command: ")
+
+
+
