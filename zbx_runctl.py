@@ -535,7 +535,7 @@ if __name__ == "__main__":
     # INPUT_ZBX_CNF_LOGPATH = ""
     # ########## EOF Self Tes
 
-    init_logger("debug")
+    init_logger(LOGGING_LEVEL)
 
     # input args deal
     INPUT_MODE = INPUT_MODE.lower()
