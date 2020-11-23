@@ -18,11 +18,12 @@
 
 
 import platform, sys, os, time
+import logging
 import re
 import subprocess
 
 
-if platform.system().lower == "windows";
+if platform.system().lower() == "windows":
     import win32serviceutil
     import shutil
 
@@ -32,8 +33,11 @@ LOGGING_LEVEL = "DEBUG"
 
 ZBX_WIN_AGENTD_SERVICE_NAME = "Zabbix Agent"
 ZBX_WIN_AGENT2_SERVICE_NAME = "Zabbix Agent2"
+ZBX_WIN_AGENTD_CONF_PATH = "C:\\zabbix_agent\\zabbix_agentd.win.conf"
 ZBX_LNX_AGENTD_SERVICE_NAME = "zabbix-agent"
 ZBX_LNX_AGENT2_SERVICE_NAME = "zabbix-agent2"
+ZBX_LNX_AGENTD_CONF_PATH = "/etc/zabbix/zabbix_agentd.conf"
+ZBX_LNX_AGENT2_CONF_PATH = "/etc/zabbix/zabbix_agent2.conf"
 
 WIN_SERVICE_STATUS_MAPPING = {
     -1: "NO_INSTALL",
@@ -93,10 +97,10 @@ def collect_zabbix_agent():
             2: 存在 agent2。
     """
     os_system = platform.system().lower()
+    # windows not allow agent2 now
+    # TODO: support agent2 on windows
     if os_system == "windows":
-        if win_service_status(ZBX_WIN_AGENT2_SERVICE_NAME) != -1:
-            return 2
-        elif win_service_status(ZBX_WIN_AGENTD_SERVICE_NAME) != -1:
+        if win_service_status(ZBX_WIN_AGENTD_SERVICE_NAME) != -1:
             return 1
         else:
             return 0
@@ -231,7 +235,7 @@ def multi_service_action(action, service_name):
             return win_service_stop(service_name)
         else:
             raise Exception("not supported action {!s} for service {!s} on windows".format(action, service_name))
-    elif os_system in ("el5", "el6", "el7"):
+    elif os_system == "linux":
         return lnx_service_action(action, service_name)
     else:
         raise Exception("not suported for the os: {!s}".format(os_system))
@@ -283,7 +287,140 @@ def get_preferred_ipaddres():
             break
     return res
 
-def execute(mode, zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cnf_listenport, zbx_cnf_logpath):
+def get_zbx_agent_config_path(os_system, agent_type):
+    """
+    """
+    if os_system == "windows":
+        if agent_type in (1, 2):
+            return ZBX_WIN_AGENTD_CONF_PATH
+    if os_system == "linux":
+        if agent_type == 1:
+            return ZBX_LNX_AGENTD_CONF_PATH
+        elif agent_type == 2:
+            return ZBX_LNX_AGENT2_CONF_PATH
+
+def zbx_config_check(config_path):
+    """检查 zabbix-agent 配置信息。
+
+    Args:
+        config_path: 配置文件路径。
+    """
+    import re
+    if not os.path.isfile(config_path):
+        logging.error("The config:[{!s}] is not a file not not exists.".format(config_path))
+        raise Exception()
+    if not os.access(config_path, os.W_OK):
+        logging.error("The config:[{!s}] is not allow to write.".format(config_path))
+        raise Exception()
+    conf_lst = []
+    with open(config_path, "r") as f:
+        for line in f:
+            if re.search(r"^ *#", line) or re.search(r"^ *$", line):
+                continue
+            conf_lst.append(line.strip())
+    out_str = "Check the conf:[{!s}] is:\n".format(config_path)
+    out_str += "\n".join(conf_lst)
+    logging.info(out_str)
+
+def zbx_config_edit(config_path, config_dict):
+    """修改 zabbix-agent 配置文件的参数。
+
+    Args:
+        config_path: 需要修改的 zabbix-agent 的配置文件路径。
+        config_dict: 需要修改的参数内容。
+    """
+    import re
+    if len(filter(lambda x: config_dict.get(x, '') in ('', []), config_dict)) == len(config_dict):
+        logging.info("No config to edit.")
+        with open(config_path, "r") as f:
+            for line in f:
+                for i in config_dict:
+                    tmp = re.search(r"^{!s} *= *(.*?)$".format(i), line)
+                    if not tmp:
+                        continue
+                    else:
+                        logging.info("Now config: {!s}.".format(line.strip()))
+                        break
+        return 
+    if not os.path.isfile(config_path):
+        logging.error("The config:[{!s}] is not a file not not exists.".format(config_path))
+        raise Exception()
+    if not os.access(config_path, os.W_OK):
+        logging.error("The config:[{!s}] is not allow to write.".format(config_path))
+        raise Exception()
+    logging.info("Begin to chagne config.")
+    conf_lst = []
+    old_config_dict = {}
+    if config_dict.get("UserParameter", None):
+        userparameter_append = [i for i in config_dict["UserParameter"]]
+        userparameter_change = []
+        old_config_dict["UserParameter"] = []
+    with open(config_path, "r") as f:
+        for line in f:
+            for i in config_dict:
+                if not config_dict[i]:
+                    continue
+                tmp = re.search(r"^{!s} *= *(.*?)$".format(i), line)
+                if not tmp:
+                    continue
+                else:
+                    if i == "UserParameter":
+                        # 如果 config_dict["UserParameter"] 中的所有元素为空，则跳过上层 for
+                        for ii_1 in config_dict[i]:
+                            if ii_1.strip() != "":
+                                break
+                        else:
+                            continue
+                        cnf_userparameter_key = "".join(line.strip().split('=')[1:]).split(',')[0].strip()
+                        for j_value in config_dict[i]:
+                            if cnf_userparameter_key == j_value.strip().split(',')[0].strip():
+                                logging.debug("Catch userparameter_key:[{!s}].".format(cnf_userparameter_key))
+                                logging.debug("It is [{!s}].".format(line.strip()))
+                                # 如果 UserParameter 是带有 DEL 符号的，则需要删除
+                                if j_value.strip().split(',')[-1].strip() == "DEL":
+                                    logging.debug("For the userparameter_key:[{!s}], DEL it.".format(cnf_userparameter_key))
+                                    userparameter_append.remove(j_value)
+                                    line = "@@"
+                                    break
+                                else:
+                                    old_line = line
+                                    line = re.sub(r"^{!s} *= *(.*?)$".format(i), "{!s}={!s}".format(i, j_value), line)
+                                    old_config_dict[i].append(tmp.group(1))
+                                    userparameter_change.append((old_line.strip(), j_value.strip()))
+                                    userparameter_append.remove(j_value)
+                                    break
+                    else:
+                        old_config_dict[i] = tmp.group(1)
+                        line = re.sub(r"^{!s} *= *(.*?)$".format(i), "{!s}={!s}".format(i, config_dict[i]), line)
+                    break
+            if line != "@@":
+                conf_lst.append(line)
+            else:
+                logging.debug("Get the special symbol:[{!s}].".format(line.strip()))
+    hassplit = 0 if conf_lst[-1].endswith(os.linesep) else 1
+    # 某些可能存在上一步未匹配得到的修改配置，这里讲追加至尾部
+    for i in config_dict:
+        if i == "UserParameter":
+            if len(filter(lambda x: x.strip() != "", userparameter_append)) > 0:
+                for j in userparameter_append:
+                    if j.strip().split(',')[-1].strip() == "DEL":
+                        continue
+                    conf_lst.append("{!s}={!s}".format(os.linesep*hassplit + i, str(j) + os.linesep))
+                    userparameter_change.append(('', "UserParameter={!s}".format(j.strip())))
+        elif i not in old_config_dict and config_dict[i]:
+            conf_lst.append("{!s}={!s}".format(os.linesep*hassplit + i, str(config_dict[i]) + os.linesep))
+            old_config_dict[i] = ""
+    with open(config_path, "w") as f:
+        for line in conf_lst:
+            f.write(line)
+    for i in old_config_dict:
+        if i != "UserParameter":
+            logging.info("Change {!s}={!s} -> {!s}".format(i, old_config_dict[i], config_dict[i]))
+        else:
+            for j in userparameter_change:
+                logging.info("Change {!s} -> {!s}".format(j[0], j[1]))
+
+def execute(mode, zbx_cnf_server, zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cnf_listenport, zbx_cnf_logpath):
     """
     """
     # Pre Checking
@@ -314,7 +451,7 @@ def execute(mode, zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cnf_listenport, zb
         if '.' in str(zbx_cnf_listenport):
             raise Exception("your zbx_cnf_listenport:[{!s}] has '.'".format(zbx_cnf_listenport))
         tmp = int(zbx_cnf_listenport)
-        if not 1024 < tmp < 32767:
+        if not (1024 < tmp <= 32767):
             raise Exception("your zbx_cnf_listenport:[{!s}] must be between 1024 and 32767".format(zbx_cnf_listenport))
     # 参数优化：对于 zbx_cnf_hostname 如果输入 @@ 符号则表示使用自动检索功能
     if zbx_cnf_hostname == "@@":
@@ -332,20 +469,91 @@ def execute(mode, zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cnf_listenport, zb
         "LogFile": zbx_cnf_logpath,
     }
 
+    has_error = False
     try:
         if os_system == "windows":
             service_name = ZBX_WIN_AGENT2_SERVICE_NAME if agent_type == 2 else ZBX_WIN_AGENTD_SERVICE_NAME
         else:
             service_name = ZBX_LNX_AGENT2_SERVICE_NAME if agent_type == 2 else ZBX_LNX_AGENTD_SERVICE_NAME
         
-        if mode == "start":
+        if mode == "status":
+            rc = multi_service_action("status", service_name)
+            if os_system == "windows":
+                logging.info("result: {!s}".format(WIN_SERVICE_STATUS_MAPPING[rc]))
+            else:
+                logging.info("rc: {!s}".format(rc))
+            exit(0)
+        elif mode == "start":
             multi_service_action("start", service_name)
         elif mode == "restart":
             multi_service_action("restart", service_name)
         elif mode == "stop":
             multi_service_action("stop", service_name)
     except Exception as e:
-        logging.error("it has error, when exec command: ")
+        has_error = True
+        logging.error("it has error, when exec command: {!s}".format(e))
+
+    if mode in ("start", "restart", "stop"):
+        if mode != "status":
+            time.sleep(5)
+        if os_system == "windows":
+            logging.info("the status is: \n{0!s}".format(WIN_SERVICE_STATUS_MAPPING[win_service_status(service_name)]))
+        if os_system == "linux":
+            logging.info("the stauts is:")
+            if not lnx_service_action("status", service_name):
+                if mode != "stop":
+                    has_error = True
+        if has_error is True:
+            exit(1)
+    config_path = get_zbx_agent_config_path(os_system, agent_type)
+    if mode == "check":
+        zbx_config_check(config_path)
+    elif mode == "edit":
+        zbx_config_edit(config_path, edit_dict)
+        logging.info("begin restart zabbix agent")
+        if not multi_service_action("restart", service_name):
+            raise Exception("restart zabbix agent is bad")
+        time.sleep(5)
+        rc = multi_service_action("status", service_name)
+        if os_system == "windows":
+            logging.info("status: {!s}".format(WIN_SERVICE_STATUS_MAPPING[rc]))
+            if rc != 4:
+                raise Exception("the status of agent is bad")
+        else:
+            logging.info("status: {!s}".format(rc))
+            if not rc:
+                raise Exception("the status of agent is bad")
 
 
+if __name__ == "__main__":
+    # ########## Self Test
+    # INPUT_MODE = "check"
+    # INPUT_ZBX_CNF_SERVER = "1.1.1.1"
+    # INPUT_ZBX_CNF_ACTIVESERVER = ""
+    # INPUT_ZBX_CNF_HOSTNAME = ""
+    # INPUT_ZBX_CNF_LISTENPORT = "10055"
+    # INPUT_ZBX_CNF_LOGPATH = ""
+    # ########## EOF Self Tes
 
+    init_logger("debug")
+
+    # input args deal
+    INPUT_MODE = INPUT_MODE.lower()
+    INPUT_ZBX_CNF_SERVER = INPUT_ZBX_CNF_SERVER.strip()
+    INPUT_ZBX_CNF_HOSTNAME = INPUT_ZBX_CNF_HOSTNAME.strip()
+    INPUT_ZBX_CNF_LISTENPORT = INPUT_ZBX_CNF_LISTENPORT.strip()
+    INPUT_ZBX_CNF_LOGPATH = INPUT_ZBX_CNF_LOGPATH.strip()
+    # EOF input args deal
+
+    try:
+        execute(
+            mode = INPUT_MODE, 
+            zbx_cnf_server = INPUT_ZBX_CNF_SERVER,
+            zbx_cnf_activeserver = INPUT_ZBX_CNF_ACTIVESERVER, 
+            zbx_cnf_hostname = INPUT_ZBX_CNF_HOSTNAME, 
+            zbx_cnf_listenport = INPUT_ZBX_CNF_LISTENPORT, 
+            zbx_cnf_logpath = INPUT_ZBX_CNF_LOGPATH,
+        )
+    except Exception as e:
+        logging.exception(e)
+        exit(1)
