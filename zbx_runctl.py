@@ -444,7 +444,7 @@ def execute(mode, zbx_cnf_server, zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cn
         zbx_cnf_logpath = None
     # 参数检查：如果 mode 为编辑，编辑参数不能为空
     else:
-        if not any([zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cnf_listenport, zbx_cnf_logpath]):
+        if not any([zbx_cnf_server, zbx_cnf_activeserver, zbx_cnf_hostname, zbx_cnf_listenport, zbx_cnf_logpath]):
             raise Exception("on mode {!s}, your edit params is empty".format(mode))
     # 检查参数：如果编辑参数存在 zbx_cnf_listenport，则必须在 1024 - 32767 之间
     if zbx_cnf_listenport:
